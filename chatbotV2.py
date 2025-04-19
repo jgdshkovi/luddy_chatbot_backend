@@ -11,8 +11,10 @@ from groq import Groq
 # Serve Model
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 GROQ_API_KEY = "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"
+session_id = ""
 
 # === Initializing re-ranker, embedding models and FAISS ===
 reranker_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
@@ -74,7 +76,7 @@ def generate_llama_answer(query, session_id, top_k=5):
     # === Prompt Assembly ===
     prompt = f""" You are LuddyBot, a helpful AI assistant at IU Luddy School.
                 Answer the following question in a clear and structured format based on the provided context and chat_history. Please also provide with the necessary website links. Don't mention "context" or "based on context" in the response.
-                Previous Chat: {chat_context}
+                {chat_context}
                 Context: {context}
                 Student's Question: {query}
                 LuddyBot's Structured Answer:
@@ -100,6 +102,21 @@ def generate_llama_answer(query, session_id, top_k=5):
 
 app = FastAPI()
 
+# Allow requests from your frontend (e.g. Luddy site or localhost for dev)
+origins = [
+    "https://luddy.indiana.edu",
+    "http://localhost:3000",   # For local testing if needed
+    "chrome-extension://jnochkppfojhijppinnblofmafknabbc"  # Optional if you're using a Chrome extension
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,           # or ["*"] for testing (not recommended in prod)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Define input format
 class Query(BaseModel):
     prompt: str
@@ -114,3 +131,10 @@ async def ask_llm(query: Query):
     )
     return {"response": response}
 
+class ExitRequest(BaseModel):
+    session_id: str
+
+@app.post("/exit")
+async def exit_llm(data: ExitRequest):
+    get_session_history(data.session_id).clear()
+    return {"response": "Successfully exited LLM. Goodbye!"}

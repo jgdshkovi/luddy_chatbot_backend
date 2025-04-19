@@ -1,0 +1,14 @@
+memory.db
+_pycache_/
+faiss_index_luddy/
+Final_scraped_txts/
+final/
+
+langchain
+faiss-cpu
+sentence-transformers
+groq
+langchain-community
+
+fastapi
+uvicorn
